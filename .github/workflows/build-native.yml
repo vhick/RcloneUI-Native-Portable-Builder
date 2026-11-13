@@ -45,9 +45,19 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: rcloneui-cargo-${{ runner.os }}-b1r1-${{ hashFiles('scripts/patch_source.py') }}
+          key: rcloneui-cargo-${{ runner.os }}-b1r2-${{ hashFiles('scripts/patch_source.py') }}
           restore-keys: |
             rcloneui-cargo-${{ runner.os }}-
+      - name: Verify Windows Node.js command shims
+        run: |
+          $npm = Get-Command npm.cmd -ErrorAction Stop
+          $npx = Get-Command npx.cmd -ErrorAction Stop
+          Write-Host "npm shim: $($npm.Source)"
+          Write-Host "npx shim: $($npx.Source)"
+          & $npm.Source --version
+          if ($LASTEXITCODE -ne 0) { throw 'npm.cmd unavailable' }
+          & $npx.Source --version
+          if ($LASTEXITCODE -ne 0) { throw 'npx.cmd unavailable' }
       - name: Python kit self-tests
         run: |
           python -m unittest discover -s tests -v
@@ -94,7 +104,7 @@ jobs:
         if: steps.identity.outputs.already_exists != 'true'
         working-directory: work/upstream
         run: |
-          npm ci --no-audit --no-fund
+          npm.cmd ci --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
       - name: Compile REAL native Windows app from tagged upstream source
         if: steps.identity.outputs.already_exists != 'true'
@@ -102,7 +112,7 @@ jobs:
         env:
           CARGO_TERM_COLOR: always
         run: |
-          npx --no-install tauri build --no-bundle --target x86_64-pc-windows-msvc
+          npx.cmd --no-install tauri build --no-bundle --target x86_64-pc-windows-msvc
           if ($LASTEXITCODE -ne 0) { throw 'Native source compilation failed' }
       - name: Run upstream Rust unit tests and native data-root test
         if: steps.identity.outputs.already_exists != 'true'
@@ -131,7 +141,7 @@ jobs:
           files: output/*.zip
           tag: ${{ steps.identity.outputs.release_tag }}
           tag-prefix: native-rcloneui-
-          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r1)
+          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r2)
           keep-releases: '3'
           prune: 'false'
           dry-run: 'true'
@@ -142,14 +152,14 @@ jobs:
           files: output/*.zip
           tag: ${{ steps.identity.outputs.release_tag }}
           tag-prefix: native-rcloneui-
-          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r1)
+          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r2)
           keep-releases: '3'
           prune: 'false'
           dry-run: 'false'
       - name: Summary of validation and GUI limitations
         if: always()
         run: |
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Rclone UI Native Portable b1r1'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Rclone UI Native Portable b1r2'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'Source and tests are performed headlessly on hosted Windows.'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'GUI startup, actual WebView2 profile writes, real remotes, shell state, notifications and user-driven Task Scheduler registration REQUIRE manual Windows acceptance.'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'No PortableApps installer or launcher is produced in NATIVE mode.'

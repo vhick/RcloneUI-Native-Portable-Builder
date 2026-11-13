@@ -13,7 +13,7 @@ RAW='https://raw.githubusercontent.com/vhick/portable-release-publisher/v1.1.1/a
 EXPECTED=('files','tag','release-title','tag-prefix','keep-releases','prune','dry-run')
 
 def request(url):
-    headers={'Accept':'application/vnd.github+json','User-Agent':'RcloneUI-Native-Builder-b1r1'}
+    headers={'Accept':'application/vnd.github+json','User-Agent':'RcloneUI-Native-Builder-b1r2'}
     if os.environ.get('GH_TOKEN'):
         headers['Authorization']='Bearer '+os.environ['GH_TOKEN']
     with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=40) as response:

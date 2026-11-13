@@ -4,6 +4,14 @@
 
 **Cargo cannot resolve Tauri 2.12.5 or tauri-build 2.7.4.** Upstream's pinned Git dependency (`fix-path-env`) or a plugin may not support the newer version. Check the Cargo error; revise dependency compatibility only after verifying a compatible Tauri version >=2.12.0. Do not fall back to 2.11.1: that silently loses native storage override.
 
+**`FileNotFoundError: [WinError 2]` in `prepare_deps.py` (b1r1 regression).**
+The Windows Node.js runner uses `npm.cmd`, not an extensionless executable.
+Upgrade all builder files to b1r2; do not copy only the Python script.
+The b1r2 `Verify Windows Node.js command shims` step checks the PATH and
+`prepare_deps.py` invokes `npm.cmd` explicitly without a shell. If the shim
+preflight fails, inspect `actions/setup-node` and the runner PATH before trying
+`npm` or changing execution policies.
+
 **`npm ci` fails.** Inspect the lock refresh phase, npm code-page problems and network availability. Do not substitute `npm install` during the compile step; `npm ci` must build from the refreshed locked tree.
 
 **`RcloneUI.exe` absent.** Inspect actual Cargo/CLI output path (`src-tauri/target/x86_64-pc-windows-msvc/release/`). The adapter sets an explicit `[[bin]]` name and disables implicit auto binaries. CI stops on missing executable rather than shipping a dummy file.

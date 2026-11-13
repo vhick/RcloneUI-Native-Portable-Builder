@@ -55,7 +55,7 @@ def main():
     dependencies(source,stage/'LICENSES/THIRD_PARTY_MANIFEST.json')
     (stage/'README-VERIFY.txt').write_text('See BUILD-IDENTITY.json and release SHA256SUMS.txt.\n'
       'CI validates binary/ZIP but does not prove interactive Windows portability.\n',encoding='utf-8')
-    zpath=out/f'RcloneUI-NativePortable-{identity["version"]}-b1r1-win-x64.zip'
+    zpath=out/f'RcloneUI-NativePortable-{identity["version"]}-b1r2-win-x64.zip'
     if zpath.exists():raise RuntimeError('Archive exists; refusing overwrite')
     with zipfile.ZipFile(zpath,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=8) as z:
         for file in sorted(stage.rglob('*')):

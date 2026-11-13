@@ -1,6 +1,16 @@
-# Rclone UI NATIVE Portable — independent Windows builder kit b1r1
+# Rclone UI NATIVE Portable — independent Windows builder kit b1r2
 
 **Purpose:** build the REAL `rclone/rclone-ui` Tauri/Rust GUI from a verified stable upstream Git tag as a directly executable Windows x64 `RcloneUI.exe`, containing its application-owned normal Tauri data under adjacent `Data/`. This is a **NATIVE-only** product, **not** PortableApps. No shared package-builder or custom NSIS installer is called. The only shared release action is `vhick/portable-release-publisher@v1.1.1`.
+
+**b1r2 fix:** `logs_117472741116.zip` exposed a Windows runner failure in
+`scripts/prepare_deps.py` (`FileNotFoundError: [WinError 2]`) because Python
+tried to spawn `npm` instead of the actual `npm.cmd` batch shim. The command
+resolver now selects `npm.cmd` on Windows and `npm` elsewhere, without
+using `shell=True`. The PowerShell build steps invoke `npm.cmd`/`npx.cmd`
+explicitly, with a cheap PATH preflight and four regression tests. The
+original b1r1 build did not reach Windows compilation; b1r2 has not yet
+been run in hosted Windows CI. No native portability promises are inferred
+from this fix.
 
 **Evidence level:** project source and official Tauri 2.12.0 behavior inspected online; kit unit/static tests can run locally. The kit has NOT yet been built on hosted Windows, tested interactively on Windows, or used to publish a release. The workflow must succeed and then a real Windows acceptance check must pass before claiming runtime portability. New upstream releases may fail closed at a changed source anchor.
 
@@ -18,7 +28,7 @@ Our portable build disables automatic Windows deep-link registration, upstream U
 4. In GitHub Desktop, commit the new files and **Push origin**. No Git initialization or local tools needed.
 5. On the GitHub repository website, select **Actions > Build Rclone UI Native Portable > Run workflow**. Set `upstream_version=latest` (or explicit `v3.7.5`) and `publish=true`. If running from a private repo, verify repository Actions settings and release visibility before publishing.
 6. Read the Windows job logs: stable release; source SHA; patched source; locked dependencies; Windows compilation; cargo tests; direct headless invocation; independently validated ZIP; publisher **dry-run**; publisher **real upload**.
-7. Under **Releases**, retrieve `RcloneUI-NativePortable-X.Y.Z-b1r1-win-x64.zip` and `SHA256SUMS.txt` (the pinned publisher generates checksums). Check SHA-256 before unpacking. The release tag records stable source SHA, patch hash and both resolved lock hashes.
+7. Under **Releases**, retrieve `RcloneUI-NativePortable-X.Y.Z-b1r2-win-x64.zip` and `SHA256SUMS.txt` (the pinned publisher generates checksums). Check SHA-256 before unpacking. The release tag records stable source SHA, patch hash and both resolved lock hashes.
 8. Extract ZIP to a writable folder and **double-click `RcloneUI.exe` directly**. The `Data/` folder sits alongside. Do not run as Administrator without a specific need.
 9. Complete `docs/ACCEPTANCE.md` on a real Windows desktop before trusting runtime portability or moving between drives.
 10. To upgrade, **quit GUI and any associated work**, back up `Data/`, extract the replacement ZIP into a new empty folder, then copy `Data/` intact. For a downgrade, restore an older **matching Data snapshot**, not just an older EXE.

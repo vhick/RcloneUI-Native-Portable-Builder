@@ -1,4 +1,4 @@
-# b1r1 implementation and evidence status
+# b1r2 implementation and evidence status
 
 This file records the **kit's creation-time** evidence. Build-time steps change their state only after a real hosted Windows workflow has run. The text below is intentionally not rewritten automatically into a claim of successful GUI portability.
 
@@ -23,3 +23,17 @@ This file records the **kit's creation-time** evidence. Build-time steps change 
 | User confirmed functioning | NOT YET VERIFIED | N/A | USER-CONFIRMED after actual use |
 
 No real RcloneUI.exe or native application ZIP is included in the kit. The kit builds them on Windows; upstream source and all dependencies are fetched unattended from their official locations. In this runtime, GitHub DNS resolution was unavailable, and Windows compilation/execution was not possible.
+
+## b1r2 Windows npm shim repair
+
+User-provided GitHub Actions log `logs_117472741116.zip` confirmed b1r1's
+source and patching steps passed, then Step 10 failed under Python 3.13 on
+Windows before Cargo compilation because an extensionless `npm` command was
+not resolvable by `subprocess.run` (`WinError 2`). The b1r2 adaptation uses
+`npm.cmd`, includes four mock-based unit tests, and invokes both npm and npx
+using their Windows `.cmd` names from PowerShell. These local regression
+tests are **STATIC-VALIDATED**, not Windows execution evidence.
+
+**Remaining:** b1r2 must pass the entire hosted Windows job; Rust/Tauri
+compilation, `RcloneUI.exe` functionality, local-data isolation, interactive
+GUI and publisher execution remain NOT YET VERIFIED.

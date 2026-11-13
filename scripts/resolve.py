@@ -18,7 +18,7 @@ STABLE = re.compile(r'^v(\d+)\.(\d+)\.(\d+)$')
 
 
 def get_json(url, token=''):
-    h = {'User-Agent': 'RcloneUI-Native-Builder-b1r1', 'Accept': 'application/vnd.github+json',
+    h = {'User-Agent': 'RcloneUI-Native-Builder-b1r2', 'Accept': 'application/vnd.github+json',
          'X-GitHub-Api-Version': '2022-11-28'}
     if token:
         h['Authorization'] = f'Bearer {token}'
