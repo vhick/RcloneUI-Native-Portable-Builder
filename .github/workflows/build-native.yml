@@ -1,0 +1,155 @@
+name: Build Rclone UI Native Portable
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_version:
+        description: 'Stable upstream version (latest or v3.7.5)'
+        required: true
+        default: latest
+        type: string
+      publish:
+        description: 'Publish after validations (false = test build only)'
+        required: true
+        default: true
+        type: boolean
+permissions:
+  contents: write
+concurrency:
+  group: rcloneui-native-build-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout independent builder repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up Rust (MSVC)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Cache Cargo registries and git checkouts (not compiled target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: rcloneui-cargo-${{ runner.os }}-b1r1-${{ hashFiles('scripts/patch_source.py') }}
+          restore-keys: |
+            rcloneui-cargo-${{ runner.os }}-
+      - name: Python kit self-tests
+        run: |
+          python -m unittest discover -s tests -v
+          if ($LASTEXITCODE -ne 0) { throw 'Kit tests failed' }
+      - name: Resolve exact published stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.upstream_version }}
+        run: |
+          python scripts/resolve.py --version "$env:VERSION" --output work/release.json
+          if ($LASTEXITCODE -ne 0) { throw 'Release resolution failed' }
+      - name: Retrieve verified stable tag and apply narrow source adaptations
+        run: |
+          python scripts/fetch_source.py --release work/release.json --source work/upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Stable source fetch failed' }
+          python scripts/patch_source.py work/upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Portable source adaptation failed' }
+      - name: Resolve dependency locks with required Tauri 2.12 support
+        run: |
+          python scripts/prepare_deps.py work/upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency refresh failed' }
+      - name: Verify pinned publisher action interface and commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/preflight_publisher.py --output work/publisher.json
+          if ($LASTEXITCODE -ne 0) { throw 'Publisher interface verification failed' }
+      - name: Compute fully attributed release identity and early duplicate check
+        id: identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/identity.py --release work/release.json --source work/upstream --publisher work/publisher.json --repo-root . --output work/identity.json --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Release identity failed' }
+      - name: Skip existing publisher-managed release
+        if: steps.identity.outputs.already_exists == 'true'
+        run: Write-Host 'Matching managed release exists; source compilation was skipped.'
+      - name: Validate patched sources before expensive compilation
+        if: steps.identity.outputs.already_exists != 'true'
+        run: |
+          python scripts/validate.py --source work/upstream --identity work/identity.json
+          if ($LASTEXITCODE -ne 0) { throw 'Native source validation failed' }
+      - name: Install locked npm dependencies
+        if: steps.identity.outputs.already_exists != 'true'
+        working-directory: work/upstream
+        run: |
+          npm ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+      - name: Compile REAL native Windows app from tagged upstream source
+        if: steps.identity.outputs.already_exists != 'true'
+        working-directory: work/upstream
+        env:
+          CARGO_TERM_COLOR: always
+        run: |
+          npx --no-install tauri build --no-bundle --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { throw 'Native source compilation failed' }
+      - name: Run upstream Rust unit tests and native data-root test
+        if: steps.identity.outputs.already_exists != 'true'
+        working-directory: work/upstream/src-tauri
+        run: |
+          cargo test --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { throw 'Rust tests failed' }
+      - name: Direct native EXE headless smoke test
+        if: steps.identity.outputs.already_exists != 'true'
+        run: |
+          python scripts/check_headless.py --exe 'work/upstream/src-tauri/target/x86_64-pc-windows-msvc/release/RcloneUI.exe'
+          if ($LASTEXITCODE -ne 0) { throw 'Direct EXE smoke test failed' }
+      - name: Prepare native package
+        if: steps.identity.outputs.already_exists != 'true'
+        id: package
+        run: |
+          python scripts/package.py --source work/upstream --identity work/identity.json --output-dir output --readme docs/NATIVE-README.txt --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { throw 'Native packaging failed' }
+          $zip = Get-ChildItem output -Filter '*.zip' | Select-Object -First 1
+          python scripts/validate.py --source work/upstream --identity work/identity.json --stage output/RcloneUI-NativePortable --zip $zip.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Native ZIP validation failed' }
+      - name: Release publisher dry run (always first)
+        if: steps.identity.outputs.already_exists != 'true'
+        uses: vhick/portable-release-publisher@v1.1.1
+        with:
+          files: output/*.zip
+          tag: ${{ steps.identity.outputs.release_tag }}
+          tag-prefix: native-rcloneui-
+          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r1)
+          keep-releases: '3'
+          prune: 'false'
+          dry-run: 'true'
+      - name: Publish ONLY validated native ZIP (shared publisher)
+        if: steps.identity.outputs.already_exists != 'true' && inputs.publish
+        uses: vhick/portable-release-publisher@v1.1.1
+        with:
+          files: output/*.zip
+          tag: ${{ steps.identity.outputs.release_tag }}
+          tag-prefix: native-rcloneui-
+          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r1)
+          keep-releases: '3'
+          prune: 'false'
+          dry-run: 'false'
+      - name: Summary of validation and GUI limitations
+        if: always()
+        run: |
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Rclone UI Native Portable b1r1'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'Source and tests are performed headlessly on hosted Windows.'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'GUI startup, actual WebView2 profile writes, real remotes, shell state, notifications and user-driven Task Scheduler registration REQUIRE manual Windows acceptance.'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'No PortableApps installer or launcher is produced in NATIVE mode.'
