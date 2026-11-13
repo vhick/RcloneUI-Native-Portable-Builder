@@ -1,4 +1,4 @@
-# b1r2 implementation and evidence status
+# b1r3 implementation and evidence status
 
 This file records the **kit's creation-time** evidence. Build-time steps change their state only after a real hosted Windows workflow has run. The text below is intentionally not rewritten automatically into a claim of successful GUI portability.
 
@@ -34,6 +34,15 @@ not resolvable by `subprocess.run` (`WinError 2`). The b1r2 adaptation uses
 using their Windows `.cmd` names from PowerShell. These local regression
 tests are **STATIC-VALIDATED**, not Windows execution evidence.
 
-**Remaining:** b1r2 must pass the entire hosted Windows job; Rust/Tauri
+**Remaining:** b1r3 must pass the entire hosted Windows job; Rust/Tauri
 compilation, `RcloneUI.exe` functionality, local-data isolation, interactive
 GUI and publisher execution remain NOT YET VERIFIED.
+
+## b1r3 dependency mismatch correction
+
+Observed in GitHub Actions logs `logs_117485897661.zip`: b1r2 dependency
+lock refresh, source validation and npm ci succeeded; Tauri CLI refused to
+build because Rust tauri 2.12.5 did not match JS API 2.11.0.
+b1r3 patches the npm API to 2.12.3 and adds a locked-resolution preflight.
+Local regression tests validate the correction logic with synthetic manifests;
+**Windows application compilation and runtime behavior remain NOT YET VERIFIED.**

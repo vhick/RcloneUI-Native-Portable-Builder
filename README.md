@@ -1,14 +1,14 @@
-# Rclone UI NATIVE Portable — independent Windows builder kit b1r2
+# Rclone UI NATIVE Portable — independent Windows builder kit b1r3
 
 **Purpose:** build the REAL `rclone/rclone-ui` Tauri/Rust GUI from a verified stable upstream Git tag as a directly executable Windows x64 `RcloneUI.exe`, containing its application-owned normal Tauri data under adjacent `Data/`. This is a **NATIVE-only** product, **not** PortableApps. No shared package-builder or custom NSIS installer is called. The only shared release action is `vhick/portable-release-publisher@v1.1.1`.
 
-**b1r2 fix:** `logs_117472741116.zip` exposed a Windows runner failure in
+**b1r2 fix (retained):** `logs_117472741116.zip` exposed a Windows runner failure in
 `scripts/prepare_deps.py` (`FileNotFoundError: [WinError 2]`) because Python
 tried to spawn `npm` instead of the actual `npm.cmd` batch shim. The command
 resolver now selects `npm.cmd` on Windows and `npm` elsewhere, without
 using `shell=True`. The PowerShell build steps invoke `npm.cmd`/`npx.cmd`
 explicitly, with a cheap PATH preflight and four regression tests. The
-original b1r1 build did not reach Windows compilation; b1r2 has not yet
+previous b1r2 run stopped during Tauri CLI version preflight; b1r3 has not yet
 been run in hosted Windows CI. No native portability promises are inferred
 from this fix.
 
@@ -16,7 +16,7 @@ from this fix.
 
 ## Why source adaptation is essential
 
-Upstream v3.7.5 uses Tauri 2.11.1, predating the application directory override introduced in Tauri 2.12.0. The adapter upgrades the library to Tauri 2.12.5 (with corresponding build crate/CLI versions) and configures `AppDirectoriesOverride::Root("./Data")` **in the Rust app before the Tauri application is built or WebViews start**. Tauri resolves relative paths from the running EXE's folder. The separate headless Task Scheduler runner requires an explicit `current_exe()` data location patch; Windows headless runs cannot override this with stale `--data-dir` arguments. rclone child processes receive an EXE-adjacent `Data/rclone-cache/` and default `Data/rclone.conf` unless a specific config was supplied; this avoids rclone's ordinary LocalAppData cache and installed-system config search. App identifier and schedule folder are changed to avoid the installed GUI's identity and tasks. These are in-process source changes, **not** a launcher or environment harvesting.
+Upstream v3.7.5 uses Tauri 2.11.1, predating the application directory override introduced in Tauri 2.12.0. The adapter upgrades Rust tauri to 2.12.5, JavaScript @tauri-apps/api to 2.12.3, and @tauri-apps/cli to 2.12.4 (and updates tauri-build) and configures `AppDirectoriesOverride::Root("./Data")` **in the Rust app before the Tauri application is built or WebViews start**. Tauri resolves relative paths from the running EXE's folder. The separate headless Task Scheduler runner requires an explicit `current_exe()` data location patch; Windows headless runs cannot override this with stale `--data-dir` arguments. rclone child processes receive an EXE-adjacent `Data/rclone-cache/` and default `Data/rclone.conf` unless a specific config was supplied; this avoids rclone's ordinary LocalAppData cache and installed-system config search. App identifier and schedule folder are changed to avoid the installed GUI's identity and tasks. These are in-process source changes, **not** a launcher or environment harvesting.
 
 Our portable build disables automatic Windows deep-link registration, upstream UI autostart plugin, upstream updater plugin, Sentry minidump telemetry, global rclone-process kill, user PATH modification and OS-wide config synchronization. Scheduling remains available only if the user registers tasks in the GUI. Registered Task Scheduler entries are intentional OS artifacts, and must be disabled or updated on folder moves. WebView2 system runtime and optional WinFsp are outside the portable distribution.
 
@@ -28,7 +28,7 @@ Our portable build disables automatic Windows deep-link registration, upstream U
 4. In GitHub Desktop, commit the new files and **Push origin**. No Git initialization or local tools needed.
 5. On the GitHub repository website, select **Actions > Build Rclone UI Native Portable > Run workflow**. Set `upstream_version=latest` (or explicit `v3.7.5`) and `publish=true`. If running from a private repo, verify repository Actions settings and release visibility before publishing.
 6. Read the Windows job logs: stable release; source SHA; patched source; locked dependencies; Windows compilation; cargo tests; direct headless invocation; independently validated ZIP; publisher **dry-run**; publisher **real upload**.
-7. Under **Releases**, retrieve `RcloneUI-NativePortable-X.Y.Z-b1r2-win-x64.zip` and `SHA256SUMS.txt` (the pinned publisher generates checksums). Check SHA-256 before unpacking. The release tag records stable source SHA, patch hash and both resolved lock hashes.
+7. Under **Releases**, retrieve `RcloneUI-NativePortable-X.Y.Z-b1r3-win-x64.zip` and `SHA256SUMS.txt` (the pinned publisher generates checksums). Check SHA-256 before unpacking. The release tag records stable source SHA, patch hash and both resolved lock hashes.
 8. Extract ZIP to a writable folder and **double-click `RcloneUI.exe` directly**. The `Data/` folder sits alongside. Do not run as Administrator without a specific need.
 9. Complete `docs/ACCEPTANCE.md` on a real Windows desktop before trusting runtime portability or moving between drives.
 10. To upgrade, **quit GUI and any associated work**, back up `Data/`, extract the replacement ZIP into a new empty folder, then copy `Data/` intact. For a downgrade, restore an older **matching Data snapshot**, not just an older EXE.
@@ -70,3 +70,16 @@ RcloneUI-NativePortable/
 - **No guarantee that every plugin uses Tauri's standard app directory APIs:** host writes by third-party children must be observed in Windows testing. Do not call a build fully verified just because the portable root exists.
 
 Refer to `docs/AUDIT.md`, `docs/FINDINGS-MATRIX.md`, `docs/VALIDATION-STATUS.md`, `docs/ACCEPTANCE.md`, `docs/TROUBLESHOOTING.md` and `docs/NATIVE-README.txt` for details.
+
+## b1r3 fix — Tauri Rust / JavaScript core version consistency
+
+`logs_117485897661.zip` showed that b1r2 successfully prepared locks and ran npm ci but
+Tauri CLI refused compilation: `tauri (v2.12.5) : @tauri-apps/api (v2.11.0)`.
+The upstream frontend API was not bumped when the backend was upgraded.
+b1r3 pins `@tauri-apps/api` to verified stable 2.12.3 (matching the Rust 2.12 minor),
+regenerates the npm lock, and adds checks against actual npm/Cargo locks in dependency
+preparation and actual installed npm files before compilation. Six new tests cover
+API version patching, invalid lockfiles and a valid lockfile fixture.
+
+This corrects the recorded mismatch but does NOT prove source compilation or runtime
+portability; the next GitHub Windows job must determine that.

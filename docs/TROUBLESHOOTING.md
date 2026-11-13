@@ -6,8 +6,8 @@
 
 **`FileNotFoundError: [WinError 2]` in `prepare_deps.py` (b1r1 regression).**
 The Windows Node.js runner uses `npm.cmd`, not an extensionless executable.
-Upgrade all builder files to b1r2; do not copy only the Python script.
-The b1r2 `Verify Windows Node.js command shims` step checks the PATH and
+Upgrade all builder files to b1r3; do not copy only the Python script.
+The b1r3 `Verify Windows Node.js command shims` step checks the PATH and
 `prepare_deps.py` invokes `npm.cmd` explicitly without a shell. If the shim
 preflight fails, inspect `actions/setup-node` and the runner PATH before trying
 `npm` or changing execution policies.
@@ -27,3 +27,10 @@ preflight fails, inspect `actions/setup-node` and the runner PATH before trying
 **WebView2 missing or browser data outside Data.** Runtime must be installed on the host. Test with ProcMon or equivalent normal diagnostic and inspect process-specific file operations; if child framework writes outside Data, stop distribution and patch the precise source/framework data-directory call. Never implement broad host cleanup.
 
 **Publisher action refuses to publish.** Ensure `contents:write`, selected tag prefix, immutable identity, valid ZIP, and repository action settings. It intentionally refuses unrelated tagged releases and uses no PAT.
+
+**`Found version mismatched Tauri packages: tauri (2.12.5) : @tauri-apps/api (2.11.0)` (b1r2 regression).**
+The Rust Tauri core and JavaScript `@tauri-apps/api` must have the same major/minor.
+Use the complete b1r3 builder; it pins API 2.12.3, refreshes the npm lockfile and
+checks actual npm/Cargo resolved packages before the expensive compilation step.
+Do NOT bypass Tauri's compatibility guard. If a future upstream release changes
+these dependencies, re-audit and update the pinned compatible versions together.

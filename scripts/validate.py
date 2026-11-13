@@ -32,9 +32,11 @@ def inspect_sources(src):
     sch=(src/'src-tauri/src/scheduler/schtasks.rs').read_text(encoding='utf-8')
     cfg=json.loads((src/'src-tauri/tauri.conf.json').read_text(encoding='utf-8'))
     cargo=(src/'src-tauri/Cargo.toml').read_text(encoding='utf-8')
+    pkg=json.loads((src/'package.json').read_text(encoding='utf-8'))
     checks={
       'runtime Tauri AppDirectoriesOverride':'AppDirectoriesOverride::Root(std::path::PathBuf::from("./Data"))' in lib,
       'Tauri upgraded to >=2.12':'version = "=2.12.5"' in cargo,
+      'Tauri JS api pinned to matching 2.12 minor':any(pkg.get(sec, {}).get('@tauri-apps/api') == '2.12.3' for sec in ('dependencies','devDependencies')),
       'headless external override cannot bypass Data': 'let (data_dir, local_data_dir) = (None::<String>, None::<String>);' in main,
       'headless current_exe storage root':'std::env::current_exe()' in store and 'root.join("Data")' in store,
       'separate scheduler namespace':'RcloneUINativePortable' in sch,

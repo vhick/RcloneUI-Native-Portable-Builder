@@ -27,14 +27,14 @@ def main():
     root=Path(a.repo_root)
     patch_hash=hashlib.sha256(b''.join((root / p).read_bytes() for p in
                  ('scripts/patch_source.py','scripts/prepare_deps.py',
-                  'scripts/validate.py','scripts/package.py'))).hexdigest()
+                  'scripts/validate.py','scripts/package.py','scripts/verify_tauri.py'))).hexdigest()
     lock_hash=digest(Path(a.source)/'src-tauri/Cargo.lock')
     npm_hash=digest(Path(a.source)/'package-lock.json')
     # Lockfile changes create distinct releases; source, builder patch revision alone do not
     # hide nonreproducible dependency updates.
-    tag=f'{PREFIX}{rec["tag"]}-b1r2-{rec["upstream_commit"][:9]}-{patch_hash[:8]}-{lock_hash[:8]}-{npm_hash[:8]}'
+    tag=f'{PREFIX}{rec["tag"]}-b1r3-{rec["upstream_commit"][:9]}-{patch_hash[:8]}-{lock_hash[:8]}-{npm_hash[:8]}'
     identity={**rec, 'publisher':pub, 'mode':'NATIVE',
-       'builder_revision':'b1r2','builder_commit':os.getenv('GITHUB_SHA','local'),
+       'builder_revision':'b1r3','builder_commit':os.getenv('GITHUB_SHA','local'),
        'source_patch_sha256':patch_hash,'built_cargo_lock_sha256':lock_hash,
        'built_npm_lock_sha256':npm_hash,'release_tag':tag,
        'platform':'windows-x86_64','installer':None,

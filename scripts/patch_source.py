@@ -10,6 +10,22 @@ import json
 import re
 from pathlib import Path
 
+TAURI_API_VERSION = '2.12.3'  # stable upstream API: same 2.12 minor as Rust 2.12.5
+
+
+def pin_tauri_api(pkg):
+    """Pin the actual JS dependency, whether upstream uses deps or devDeps."""
+    matches = []
+    for section in ('dependencies', 'devDependencies'):
+        block = pkg.get(section, {})
+        if '@tauri-apps/api' in block:
+            matches.append(section)
+    if not matches:
+        raise RuntimeError('Missing upstream @tauri-apps/api dependency; audit source before updating')
+    for section in matches:
+        pkg[section]['@tauri-apps/api'] = TAURI_API_VERSION
+    return pkg
+
 APP_IDENTIFIER = 'com.rclone.ui.nativeportable'
 MAIN_BINARY = 'RcloneUI'
 
@@ -63,6 +79,10 @@ def apply(root):
     if '@tauri-apps/cli' not in deps:
         raise RuntimeError('Missing upstream @tauri-apps/cli dev dependency')
     deps['@tauri-apps/cli'] = '2.12.4'
+    # The Tauri CLI refuses to build if its Rust core and JS core use
+    # different major/minor versions. Upstream's api 2.11.0 must be updated
+    # alongside tauri 2.12.5. Fail closed if the expected API is absent.
+    pin_tauri_api(pkg)
     package_path.write_text(json.dumps(pkg, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
 
     lib_path = root/'src-tauri/src/lib.rs'

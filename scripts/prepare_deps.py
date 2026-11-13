@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import shutil
 import sys
+from verify_tauri import check_versions
 
 def resolved_command(cmd, platform=None):
     """Resolve Node's Windows .cmd shims explicitly without a shell.
@@ -40,6 +41,7 @@ def main():
     run(['npm','install','--package-lock-only','--ignore-scripts','--no-audit','--no-fund'],root)
     run(['cargo','update','-p','tauri','--precise','2.12.5'],root/'src-tauri')
     run(['cargo','update','-p','tauri-build','--precise','2.7.4'],root/'src-tauri')
+    check_versions(root)  # test resolved versions BEFORE npm ci or expensive Rust build
     # locked dependency manifests are now in place. All subsequent steps use --locked / npm ci.
     print('Refreshed resolved dependency locks. Build identity includes both SHA-256 hashes.')
 
