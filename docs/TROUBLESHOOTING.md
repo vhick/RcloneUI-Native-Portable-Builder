@@ -1,13 +1,13 @@
 # Troubleshooting
 
-**`patch_source.py`: expected source anchor not found.** The selected upstream release changed. Do not delete the safety check or build `main`. Compare the tagged new source with the adapter; update it only after a fresh audit. Choose explicit v3.7.5 to test the known source revision.
+**`patch_source.py`: expected source anchor not found.** The selected upstream release changed. Do not delete the safety check or build `main`. Compare the tagged new source with the adapter; update it only after a fresh audit. Choose explicit v3.7.7 to retest the latest source inspected for this kit.
 
 **Cargo cannot resolve Tauri 2.12.5 or tauri-build 2.7.4.** Upstream's pinned Git dependency (`fix-path-env`) or a plugin may not support the newer version. Check the Cargo error; revise dependency compatibility only after verifying a compatible Tauri version >=2.12.0. Do not fall back to 2.11.1: that silently loses native storage override.
 
 **`FileNotFoundError: [WinError 2]` in `prepare_deps.py` (b1r1 regression).**
 The Windows Node.js runner uses `npm.cmd`, not an extensionless executable.
-Upgrade all builder files to b1r3; do not copy only the Python script.
-The b1r3 `Verify Windows Node.js command shims` step checks the PATH and
+Upgrade all builder files to b1r4; do not copy only the Python script.
+The b1r4 `Verify Windows Node.js command shims` step checks the PATH and
 `prepare_deps.py` invokes `npm.cmd` explicitly without a shell. If the shim
 preflight fails, inspect `actions/setup-node` and the runner PATH before trying
 `npm` or changing execution policies.
@@ -30,7 +30,17 @@ preflight fails, inspect `actions/setup-node` and the runner PATH before trying
 
 **`Found version mismatched Tauri packages: tauri (2.12.5) : @tauri-apps/api (2.11.0)` (b1r2 regression).**
 The Rust Tauri core and JavaScript `@tauri-apps/api` must have the same major/minor.
-Use the complete b1r3 builder; it pins API 2.12.3, refreshes the npm lockfile and
+Use the complete b1r4 builder; it pins API 2.12.3, refreshes the npm lockfile and
 checks actual npm/Cargo resolved packages before the expensive compilation step.
 Do NOT bypass Tauri's compatibility guard. If a future upstream release changes
 these dependencies, re-audit and update the pinned compatible versions together.
+
+
+**v3.7.7: `zookeeper::tests::unzip_extracts_files_and_modes` fails on Windows after successful compilation.**
+The upstream test ZIP used Unix `rclone`, while `find_binary()` expects `rclone.exe`
+on Windows, causing `Option::unwrap()` on `None`. The b1r4 source adapter
+corrects that specific test fixture to use the platform's `bin_name()` and
+then runs the *full* suite; no tests are ignored. The precompile source
+validator catches the old broken fixture. An unfamiliar upstream change
+is a legitimate STOP and requires an audit; **do not run cargo test with skip
+flags** and do not blindly publish when tests fail.

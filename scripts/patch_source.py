@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed, application-specific adapters for rclone-ui v3.7.5+ source.
+"""Fail-closed, application-specific adapters for stable rclone-ui v3.7.x+ source.
 
 No wrappers. All modifications run against a verified upstream Git checkout.
 Any upstream refactor that breaks an anchor BLOCKS release rather than silently
@@ -9,6 +9,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from compat_tests import adapt_upstream_cross_platform_tests
 
 TAURI_API_VERSION = '2.12.3'  # stable upstream API: same 2.12 minor as Rust 2.12.5
 
@@ -231,6 +232,8 @@ def apply(root):
         r'(pub fn set_config_sync\(\s*app: AppHandle,\s*enable: bool,\s*app_config_path: String,\s*owned_link_target: Option<String>,\s*default_config_path: Option<String>,\s*\) -> Result<ConfigSyncStatus, String> \{)',
         r'\g<1>' + sync_guard.replace('\\','\\\\'),
         'system rclone config sync guard')
+    zoo, test_adaptation = adapt_upstream_cross_platform_tests(zoo)
+    print("Upstream test compatibility:", test_adaptation)
     zoo_path.write_text(zoo, encoding='utf-8')
 
     runner_path = root/'src-tauri/src/scheduler/runner.rs'

@@ -1,18 +1,30 @@
-# Rclone UI NATIVE Portable — independent Windows builder kit b1r3
+# Rclone UI NATIVE Portable — independent Windows builder kit b1r4
 
 **Purpose:** build the REAL `rclone/rclone-ui` Tauri/Rust GUI from a verified stable upstream Git tag as a directly executable Windows x64 `RcloneUI.exe`, containing its application-owned normal Tauri data under adjacent `Data/`. This is a **NATIVE-only** product, **not** PortableApps. No shared package-builder or custom NSIS installer is called. The only shared release action is `vhick/portable-release-publisher@v1.1.1`.
 
-**b1r2 fix (retained):** `logs_117472741116.zip` exposed a Windows runner failure in
-`scripts/prepare_deps.py` (`FileNotFoundError: [WinError 2]`) because Python
-tried to spawn `npm` instead of the actual `npm.cmd` batch shim. The command
-resolver now selects `npm.cmd` on Windows and `npm` elsewhere, without
-using `shell=True`. The PowerShell build steps invoke `npm.cmd`/`npx.cmd`
-explicitly, with a cheap PATH preflight and four regression tests. The
-previous b1r2 run stopped during Tauri CLI version preflight; b1r3 has not yet
-been run in hosted Windows CI. No native portability promises are inferred
-from this fix.
+**b1r4 maintenance fix (November 21, 2026):** the official upstream v3.7.7
+Windows source compilation succeeded in the user-provided GitHub Actions log,
+but the following upstream Rust unit test failed: `zookeeper::tests::unzip_extracts_files_and_modes`.
+The test fixture adds `rclone` to a sample ZIP, while the actual Windows binary
+finder correctly searches for `rclone.exe`. The new `scripts/compat_tests.py`
+checks the actual tagged upstream source and, *only when the known mismatch is
+present*, makes the test fixture use `bin_name()` for the current platform.
+It leaves production code alone and executes the **entire** upstream Rust test
+suite (53 passed, 1 failed on the observed v3.7.7 run). A novel source mismatch
+still fails closed and requires human review. Six new unit tests cover the
+known fixture, safe no-op, and unsafe changed-layout behavior. This is
+controlled automatic compatibility, **not** arbitrary source rewriting.
 
-**Evidence level:** project source and official Tauri 2.12.0 behavior inspected online; kit unit/static tests can run locally. The kit has NOT yet been built on hosted Windows, tested interactively on Windows, or used to publish a release. The workflow must succeed and then a real Windows acceptance check must pass before claiming runtime portability. New upstream releases may fail closed at a changed source anchor.
+**Windows test evidence:** the `logs_121440054520.zip` build selected stable
+v3.7.7 at commit `90b7a7f3254df95bcb82bdfedd44fe700a17d76b`,
+successfully compiled `RcloneUI.exe`, then failed in the named upstream test
+before native ZIP packaging, final headless smoke test or publication.
+Previous b1r3 user tests demonstrated Copy to a Google Drive test folder.
+**The b1r4 adapter itself has not yet been compiled on Windows**, and no
+new release or complete GUI data-containment verification is claimed.
+
+**Earlier fixes retained:** b1r2 fixed Python invoking Windows `npm.cmd`;
+b1r3 synchronized Tauri 2.12 Rust with the matching JavaScript API.
 
 ## Why source adaptation is essential
 
@@ -26,9 +38,9 @@ Our portable build disables automatic Windows deep-link registration, upstream U
 2. Open GitHub Desktop > **File > Clone repository** > choose the new repository.
 3. Extract **the complete contents** of this builder-kit ZIP into the repository's root. Hidden `.github/workflows/build-native.yml` must exist. Copy all kit files and directories, **not** the parent kit directory itself.
 4. In GitHub Desktop, commit the new files and **Push origin**. No Git initialization or local tools needed.
-5. On the GitHub repository website, select **Actions > Build Rclone UI Native Portable > Run workflow**. Set `upstream_version=latest` (or explicit `v3.7.5`) and `publish=true`. If running from a private repo, verify repository Actions settings and release visibility before publishing.
+5. On the GitHub repository website, select **Actions > Build Rclone UI Native Portable > Run workflow**. Set `upstream_version=latest` (or explicit `v3.7.7`) and `publish=false` for the initial full-workflow test. After a successful run and Windows acceptance, rerun with `publish=true`. If running from a private repo, verify repository Actions settings and release visibility before publishing.
 6. Read the Windows job logs: stable release; source SHA; patched source; locked dependencies; Windows compilation; cargo tests; direct headless invocation; independently validated ZIP; publisher **dry-run**; publisher **real upload**.
-7. Under **Releases**, retrieve `RcloneUI-NativePortable-X.Y.Z-b1r3-win-x64.zip` and `SHA256SUMS.txt` (the pinned publisher generates checksums). Check SHA-256 before unpacking. The release tag records stable source SHA, patch hash and both resolved lock hashes.
+7. Under **Releases**, retrieve `RcloneUI-NativePortable-X.Y.Z-b1r4-win-x64.zip` and `SHA256SUMS.txt` (the pinned publisher generates checksums). Check SHA-256 before unpacking. The release tag records stable source SHA, patch hash and both resolved lock hashes.
 8. Extract ZIP to a writable folder and **double-click `RcloneUI.exe` directly**. The `Data/` folder sits alongside. Do not run as Administrator without a specific need.
 9. Complete `docs/ACCEPTANCE.md` on a real Windows desktop before trusting runtime portability or moving between drives.
 10. To upgrade, **quit GUI and any associated work**, back up `Data/`, extract the replacement ZIP into a new empty folder, then copy `Data/` intact. For a downgrade, restore an older **matching Data snapshot**, not just an older EXE.
@@ -62,7 +74,7 @@ RcloneUI-NativePortable/
 ## Important limitations
 
 - **Upstream project may change:** adapters are intentionally version-sensitive. A changed source layout stops rather than silently producing a nonportable app.
-- **Upstream Tauri update required:** version 2.12.5 must compile with the pinned upstream dependencies; this has not been proven here by a real Windows build.
+- **Upstream Tauri update required:** version 2.12.5 is validated as compilable in the b1r3/v3.7.7 Windows Actions log, but new upstream dependency changes and the b1r4 variant still require CI verification.
 - **Some UI features intentionally disabled:** updater, auto-login start, global process stop, PATH integration and config syncing. Their upstream UI buttons may fail/appear although safely blocked. Windows automatic protocol registration is also omitted.
 - **Scheduled-task side effects:** user-created tasks intentionally live in Windows Task Scheduler (`\\RcloneUINativePortable\\`); startup reconciliation and stale task recovery require real Windows testing. A move makes task executable paths stale.
 - **Installed-app coexistence:** distinct identifier/schedule namespace reduces collision risk, but notifications, platform single-instance behavior and Windows-managed caches require manual tests.
@@ -71,7 +83,7 @@ RcloneUI-NativePortable/
 
 Refer to `docs/AUDIT.md`, `docs/FINDINGS-MATRIX.md`, `docs/VALIDATION-STATUS.md`, `docs/ACCEPTANCE.md`, `docs/TROUBLESHOOTING.md` and `docs/NATIVE-README.txt` for details.
 
-## b1r3 fix — Tauri Rust / JavaScript core version consistency
+## b1r3 fix (retained) — Tauri Rust / JavaScript core version consistency
 
 `logs_117485897661.zip` showed that b1r2 successfully prepared locks and ran npm ci but
 Tauri CLI refused compilation: `tauri (v2.12.5) : @tauri-apps/api (v2.11.0)`.
@@ -81,5 +93,19 @@ regenerates the npm lock, and adds checks against actual npm/Cargo locks in depe
 preparation and actual installed npm files before compilation. Six new tests cover
 API version patching, invalid lockfiles and a valid lockfile fixture.
 
-This corrects the recorded mismatch but does NOT prove source compilation or runtime
-portability; the next GitHub Windows job must determine that.
+This corrected the recorded mismatch. Source compilation subsequently passed for v3.7.7 in the Nov 21 b1r3 Actions log; runtime data containment and b1r4 execution still require verification.
+
+## b1r4 stable-release compatibility boundaries
+
+The resolver selects the latest **published stable** release and exact commit,
+excluding beta/RC/nightly and cloud releases. The source adapter and
+`compat_tests.py` handle the verified v3.7.7 source/test variation *without
+waiting for a new per-version kit*. This is not an unconditional "build every
+future version" mechanism: a source API removal, new persistent host-write
+path, changed dependency ABI, or security-sensitive refactor must stop the
+build for review. The Rust full-suite gate, Tauri API consistency checks and
+in-process Data root checks are intentionally never bypassed.
+
+The ZIP named `RcloneUI-NativePortable-<version>-b1r4-win-x64.zip` is generated
+only after an actual hosted Windows build and all checks pass. The zip in this
+kit is only the *builder scripts*.

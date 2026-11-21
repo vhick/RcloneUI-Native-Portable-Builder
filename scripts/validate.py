@@ -7,6 +7,7 @@ from pathlib import Path
 import struct
 import sys
 import zipfile
+from compat_tests import adapt_upstream_cross_platform_tests
 
 EXPECTED_EXE='RcloneUI.exe'
 EXPECTED_ROOT='RcloneUI-NativePortable'
@@ -28,6 +29,10 @@ def inspect_sources(src):
     main=(src/'src-tauri/src/main.rs').read_text(encoding='utf-8')
     store=(src/'src-tauri/src/scheduler/storeread.rs').read_text(encoding='utf-8')
     zoo=(src/'src-tauri/src/zookeeper.rs').read_text(encoding='utf-8')
+    _, zip_fixture_status = adapt_upstream_cross_platform_tests(zoo)
+    if zip_fixture_status.startswith('adapted '):
+        raise RuntimeError('Upstream Windows ZIP test fixture still broken; source adapter was not applied')
+    print('PASS: cross-platform upstream test fixture:',zip_fixture_status)
     runner=(src/'src-tauri/src/scheduler/runner.rs').read_text(encoding='utf-8')
     sch=(src/'src-tauri/src/scheduler/schtasks.rs').read_text(encoding='utf-8')
     cfg=json.loads((src/'src-tauri/tauri.conf.json').read_text(encoding='utf-8'))

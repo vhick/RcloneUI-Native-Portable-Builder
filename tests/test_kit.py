@@ -109,3 +109,73 @@ class TauriDependencyCoherenceTests(unittest.TestCase):
             check_versions(root)
 
 if __name__=='__main__':unittest.main()
+
+# b1r4: platform-dependent test fixture compatibility; production code unchanged.
+# Use a source-shaped fixture from the reviewed upstream v3.7.7 zookeeper.rs.
+from compat_tests import adapt_upstream_cross_platform_tests
+
+class UpstreamTestCompatibilityTests(unittest.TestCase):
+    @staticmethod
+    def known_upstream_fixture():
+        return '''fn bin_name() -> &'static str {
+    if cfg!(target_os = "windows") { "rclone.exe" } else { "rclone" }
+}
+fn find_binary(dir: &Path) -> Option<PathBuf> {
+    let target = bin_name();
+    None
+}
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn unzip_extracts_files_and_modes() {
+        let dir = scratch_dir();
+        write_zip(
+            &archive,
+            &[
+                ("rclone-v1-osx/", b"", 0o755),
+                ("rclone-v1-osx/rclone", b"binary contents", 0o755),
+                ("rclone-v1-osx/README.txt", b"readme", 0o644),
+            ],
+        );
+        let binary = find_binary(&out).unwrap();
+    }
+    #[test]
+    fn unzip_rejects_paths_outside_the_output() { }
+}
+'''
+    def test_v377_fixture_automatically_uses_platform_binary(self):
+        fixed, status = adapt_upstream_cross_platform_tests(self.known_upstream_fixture())
+        self.assertIn('adapted test ZIP fixture', status)
+        self.assertIn('let zip_binary_name = format!("rclone-v1-osx/{}", bin_name());', fixed)
+        self.assertIn('(zip_binary_name.as_str(), b"binary contents", 0o755)',fixed)
+        self.assertNotIn('(\"rclone-v1-osx/rclone\", b\"binary contents\"', fixed)
+        self.assertIn('let binary = find_binary(&out).unwrap();',fixed)
+
+    def test_no_test_is_skipped_or_production_lookup_changed(self):
+        before=self.known_upstream_fixture()
+        after,_=adapt_upstream_cross_platform_tests(before)
+        self.assertIn('fn find_binary(dir: &Path) -> Option<PathBuf> {\n    let target = bin_name();',after)
+        self.assertIn('fn unzip_extracts_files_and_modes()',after)
+        self.assertNotIn('#[ignore]',after)
+
+    def test_already_fixed_upstream_is_left_unchanged(self):
+        fixed,_=adapt_upstream_cross_platform_tests(self.known_upstream_fixture())
+        again,status=adapt_upstream_cross_platform_tests(fixed)
+        self.assertEqual(again,fixed)
+        self.assertIn('unchanged',status)
+
+    def test_upstream_test_removed_is_noop(self):
+        source='fn bin_name() -> &\'static str { "rclone.exe" }'
+        self.assertEqual(adapt_upstream_cross_platform_tests(source)[0],source)
+
+    def test_unrecognized_broken_fixture_fails_closed(self):
+        source=self.known_upstream_fixture().replace(
+            '("rclone-v1-osx/rclone", b"binary contents", 0o755)',
+            '("rclone-v1-osx/rclone", b"new bytes", 0o755)')
+        with self.assertRaisesRegex(RuntimeError,'changed shape'):
+            adapt_upstream_cross_platform_tests(source)
+
+    def test_lookup_change_fails_closed(self):
+        source=self.known_upstream_fixture().replace('let target = bin_name();','let target = "other";')
+        with self.assertRaisesRegex(RuntimeError,'lookup semantics changed'):
+            adapt_upstream_cross_platform_tests(source)

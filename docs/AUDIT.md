@@ -34,3 +34,20 @@ Observed stable release: rclone/rclone-ui v3.7.5, upstream release page abbrevia
 - https://v2.tauri.app/reference/config/
 - https://raw.githubusercontent.com/vhick/portable-release-publisher/v1.1.1/action.yml
 - https://raw.githubusercontent.com/vhick/portable-release-publisher/v1.1.1/scripts/publish.py
+
+
+## November 2026 upstream compatibility audit (b1r4)
+
+The GitHub Actions run `logs_121440054520.zip` selected published stable
+`v3.7.7` at commit `90b7a7f3254df95bcb82bdfedd44fe700a17d76b`.
+Compiled Rust/Tauri Windows executable successfully. Source-inspected upstream
+`src-tauri/src/zookeeper.rs` shows `fn bin_name()` returning `rclone.exe` on
+Windows and the recursive `find_binary()` using `bin_name()`. The upstream
+`unzip_extracts_files_and_modes` fixture hardcodes the Unix `rclone` name,
+causing the observed Windows-only test failure. `scripts/compat_tests.py`
+corrects only the fixture based on verified signature, leaving the production
+find/extract code intact. The rest of the portability source patch passed
+against v3.7.7 according to the provided CI logs.
+
+Sources: https://github.com/rclone/rclone-ui/releases/tag/v3.7.7 and
+https://raw.githubusercontent.com/rclone/rclone-ui/v3.7.7/src-tauri/src/zookeeper.rs

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       upstream_version:
-        description: 'Stable upstream version (latest or v3.7.5)'
+        description: 'Stable upstream version (latest or vX.Y.Z)'
         required: true
         default: latest
         type: string
@@ -45,7 +45,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: rcloneui-cargo-${{ runner.os }}-b1r3-${{ hashFiles('scripts/patch_source.py') }}
+          key: rcloneui-cargo-${{ runner.os }}-b1r4-${{ hashFiles('scripts/patch_source.py', 'scripts/compat_tests.py') }}
           restore-keys: |
             rcloneui-cargo-${{ runner.os }}-
       - name: Verify Windows Node.js command shims
@@ -123,6 +123,7 @@ jobs:
         if: steps.identity.outputs.already_exists != 'true'
         working-directory: work/upstream/src-tauri
         run: |
+          # Run the full upstream test suite (no skips, ignores, or error masking).
           cargo test --locked --target x86_64-pc-windows-msvc
           if ($LASTEXITCODE -ne 0) { throw 'Rust tests failed' }
       - name: Direct native EXE headless smoke test
@@ -146,7 +147,7 @@ jobs:
           files: output/*.zip
           tag: ${{ steps.identity.outputs.release_tag }}
           tag-prefix: native-rcloneui-
-          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r3)
+          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r4)
           keep-releases: '3'
           prune: 'false'
           dry-run: 'true'
@@ -157,14 +158,14 @@ jobs:
           files: output/*.zip
           tag: ${{ steps.identity.outputs.release_tag }}
           tag-prefix: native-rcloneui-
-          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r3)
+          release-title: Rclone UI Native Portable ${{ steps.identity.outputs.upstream_version }} (b1r4)
           keep-releases: '3'
           prune: 'false'
           dry-run: 'false'
       - name: Summary of validation and GUI limitations
         if: always()
         run: |
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Rclone UI Native Portable b1r3'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Rclone UI Native Portable b1r4'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'Source and tests are performed headlessly on hosted Windows.'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'GUI startup, actual WebView2 profile writes, real remotes, shell state, notifications and user-driven Task Scheduler registration REQUIRE manual Windows acceptance.'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value 'No PortableApps installer or launcher is produced in NATIVE mode.'
